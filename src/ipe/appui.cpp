@@ -538,9 +538,11 @@ void AppUiBase::buildMenus() {
 	}
     };
 
+    // 1. Add top-level standard ipelets
     for (const auto & ip : topLevel)
 	addIpeletItem(ip, false);
 
+    // 2. Add category submenus
     if (!topLevel.empty() && !categories.empty())
 	addItem(EIpeletMenu);
 

@@ -11,7 +11,7 @@ endif
 subdirs_libraries = ipelib ipecairo ipelua ipecanvas ipeui
 subdirs_cli = ipetoipe iperender ipescript ipe6upgrade ipeextract
 
-subdirs = $(subdirs_libraries) $(subdirs_cli) ipelets/lua ipe
+subdirs = $(subdirs_libraries) $(subdirs_cli) ipelets/lua ipelets/kgon ipe
 
 ifdef IPEWASM
 undefine IPEQVORONOI

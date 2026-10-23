@@ -66,12 +66,12 @@ public:
     virtual Group * asGroup();
     virtual const Group * asGroup() const;
     virtual Text * asText();
-    virtual const Text * asText() const;
     virtual Path * asPath();
     virtual Image * asImage();
     virtual Reference * asReference();
 
     virtual Type type() const = 0;
+    virtual const Text * asText() const;
 
     virtual TPinned pinned() const;
     void setPinned(TPinned pin);
@@ -148,8 +148,6 @@ protected:
 protected:
     Matrix iMatrix;
     Attribute iCustom;
-    Attribute iAnimate;
-    Attribute iVariant;
     TPinned iPinned : 8;
     TTransformations iTransformations : 8;
 };

@@ -137,7 +137,7 @@ int ipelua::ipelet_constructor(lua_State * L) {
 	    return 2;
 	}
 
-	if (ipelet->ipelibVersion() != IPELIB_VERSION) {
+	if (ipelet->ipelibVersion() / 10000 != IPELIB_VERSION / 10000) {
 	    delete ipelet;
 	    lua_pushnil(L);
 	    lua_pushstring(L, "ipelet linked against older version of Ipelib");

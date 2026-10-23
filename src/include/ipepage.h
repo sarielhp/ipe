@@ -251,6 +251,8 @@ private:
 	bool iSkip;
     };
     std::vector<STitle> iTitles;
+    // ABI padding to maintain struct layout compatibility with pre-7.3 ipelets (keeps iObjects at offset 0xe8)
+    char iLegacyPadding[0x88];
 
     bool iUseTitle[2];
     String iSection[2];

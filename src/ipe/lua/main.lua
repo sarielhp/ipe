@@ -371,22 +371,69 @@ end
 
 --------------------------------------------------------------------
 
+local function find_system_ipelet_dirs()
+  local dirs = {}
+  local base_paths = { "/usr/lib/ipe", "/usr/local/lib/ipe", "/usr/lib64/ipe" }
+  for _, base in ipairs(base_paths) do
+    if ipe.fileExists(base) then
+      local ok, entries = pcall(ipe.directory, base)
+      if ok and entries then
+        for _, entry in ipairs(entries) do
+          local p = base .. "/" .. entry .. "/ipelets"
+          if ipe.fileExists(p) then
+            dirs[#dirs + 1] = p
+          end
+        end
+      end
+    end
+  end
+  return dirs
+end
+
+local function add_ipelet_dir(dir)
+  for _, d in ipairs(config.ipeletDirs) do
+    if d == dir then return end
+  end
+  config.ipeletDirs[#config.ipeletDirs + 1] = dir
+end
+
 local home = os.getenv("HOME")
 local ipeletpath = os.getenv("IPELETPATH")
 if ipeletpath then
   config.ipeletDirs = {}
   for ipelet in string.gmatch(ipeletpath, fname_pattern) do
     local w = ipelet
-    if w == "_" then w = ipe.folder("ipelets") end
+    if w == "_" then
+      w = ipe.folder("ipelets")
+      if not ipe.fileExists(w) then
+        local sys_dirs = find_system_ipelet_dirs()
+        for _, sd in ipairs(sys_dirs) do
+          add_ipelet_dir(sd)
+        end
+      end
+    end
     if w:sub(1,4) == "ipe:" then
       w = config.ipedrive .. w:sub(5)
     end
-    config.ipeletDirs[#config.ipeletDirs + 1] = w
+    add_ipelet_dir(w)
   end
 else
-  config.ipeletDirs = { ipe.folder("config", "customization.lua"),
-			ipe.folder("user-ipelets"),
-			ipe.folder("ipelets") }
+  config.ipeletDirs = {}
+  add_ipelet_dir(ipe.folder("config", "customization.lua"))
+  add_ipelet_dir(ipe.folder("user-ipelets"))
+  add_ipelet_dir(ipe.folder("ipelets"))
+  if not ipe.fileExists(ipe.folder("ipelets")) then
+    local dev_dirs = { "build/ipelets", "../ipelets", "src/ipelets/lua", "../src/ipelets/lua" }
+    for _, d in ipairs(dev_dirs) do
+      if ipe.fileExists(d) then
+        add_ipelet_dir(d)
+      end
+    end
+  end
+  local sys_dirs = find_system_ipelet_dirs()
+  for _, sd in ipairs(sys_dirs) do
+    add_ipelet_dir(sd)
+  end
 end
 
 local ipestyles = os.getenv("IPESTYLES")
@@ -420,9 +467,16 @@ function load_ipelets()
   end
 end
 
+local loaded_ipelet_names = {}
+
 function load_ipelet(dir, fname)
+  local name = fname:sub(1,-5)
+  if loaded_ipelet_names[name] then
+    return
+  end
+  loaded_ipelet_names[name] = true
   ft = {}
-  ft.name = fname:sub(1,-5)
+  ft.name = name
   ft.path = dir .. "/" .. fname
   ft.dllname = dir .. "/" .. ft.name
   ft._G = _G

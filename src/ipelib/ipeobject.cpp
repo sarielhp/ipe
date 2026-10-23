@@ -127,8 +127,52 @@
 #include "ipeobject.h"
 #include "ipegeo.h"
 #include "ipepainter.h"
+#include <unordered_map>
 
 using namespace ipe;
+
+static_assert(sizeof(Object) == 0x40,
+	      "Object must be 64 bytes to preserve ipelet binary compatibility");
+
+struct SObjectExt {
+    Attribute iAnimate{Attribute::UNDEFINED()};
+    Attribute iVariant{Attribute::UNDEFINED()};
+};
+static std::unordered_map<const Object *, SObjectExt> sObjectExt;
+
+static Attribute getObjectAnimate(const Object * obj) {
+    auto it = sObjectExt.find(obj);
+    return (it != sObjectExt.end()) ? it->second.iAnimate : Attribute::UNDEFINED();
+}
+
+static void setObjectAnimate(const Object * obj, Attribute value) {
+    if (value.isUndefined()) {
+	auto it = sObjectExt.find(obj);
+	if (it != sObjectExt.end()) {
+	    it->second.iAnimate = value;
+	    if (it->second.iVariant.isUndefined()) sObjectExt.erase(it);
+	}
+    } else {
+	sObjectExt[obj].iAnimate = value;
+    }
+}
+
+static Attribute getObjectVariant(const Object * obj) {
+    auto it = sObjectExt.find(obj);
+    return (it != sObjectExt.end()) ? it->second.iVariant : Attribute::UNDEFINED();
+}
+
+static void setObjectVariant(const Object * obj, Attribute value) {
+    if (value.isUndefined()) {
+	auto it = sObjectExt.find(obj);
+	if (it != sObjectExt.end()) {
+	    it->second.iVariant = value;
+	    if (it->second.iAnimate.isUndefined()) sObjectExt.erase(it);
+	}
+    } else {
+	sObjectExt[obj].iVariant = value;
+    }
+}
 
 // --------------------------------------------------------------------
 
@@ -181,10 +225,8 @@ Object::Object(const XmlAttributes & attr) {
     }
     iCustom = Attribute::UNDEFINED();
     if (attr.has("custom", str) && !str.empty()) iCustom = Attribute(false, str);
-    iAnimate = Attribute::UNDEFINED();
-    if (attr.has("animate", str) && !str.empty()) iAnimate = Attribute(false, str);
-    iVariant = Attribute::UNDEFINED();
-    if (attr.has("variant", str)) iVariant = Attribute(true, str);
+    if (attr.has("animate", str) && !str.empty()) setObjectAnimate(this, Attribute(false, str));
+    if (attr.has("variant", str)) setObjectVariant(this, Attribute(true, str));
 }
 
 /*! Create object by taking pinning/transforming from \a attr and
@@ -193,8 +235,6 @@ Object::Object(const AllAttributes & attr) {
     iPinned = attr.iPinned;
     iTransformations = attr.iTransformations;
     iCustom = Attribute::UNDEFINED();
-    iAnimate = Attribute::UNDEFINED();
-    iVariant = Attribute::UNDEFINED();
 }
 
 /*! Create object with identity matrix, no pinning, all transformations. */
@@ -202,8 +242,6 @@ Object::Object() {
     iPinned = ENoPin;
     iTransformations = ETransformationsAffine;
     iCustom = Attribute::UNDEFINED();
-    iAnimate = Attribute::UNDEFINED();
-    iVariant = Attribute::UNDEFINED();
 }
 
 //! Copy constructor.
@@ -212,13 +250,13 @@ Object::Object(const Object & rhs) {
     iPinned = rhs.iPinned;
     iTransformations = rhs.iTransformations;
     iCustom = rhs.iCustom;
-    iAnimate = rhs.iAnimate;
-    iVariant = rhs.iVariant;
+    auto it = sObjectExt.find(&rhs);
+    if (it != sObjectExt.end()) sObjectExt[this] = it->second;
 }
 
 //! Pure virtual destructor.
 Object::~Object() {
-    // nothing
+    sObjectExt.erase(this);
 }
 
 //! Write layer, pin, transformations, matrix to XML stream.
@@ -241,14 +279,16 @@ void Object::saveAttributesAsXml(Stream & stream, String layer) const {
 	stream.putXmlString(iCustom.string());
 	stream << "\"";
     }
-    if (iAnimate != Attribute::UNDEFINED()) {
+    Attribute anim = getObjectAnimate(this);
+    if (anim != Attribute::UNDEFINED()) {
 	stream << " animate=\"";
-	stream.putXmlString(iAnimate.string());
+	stream.putXmlString(anim.string());
 	stream << "\"";
     }
-    if (iVariant != Attribute::UNDEFINED()) {
+    Attribute vari = getObjectVariant(this);
+    if (vari != Attribute::UNDEFINED()) {
 	stream << " variant=\"";
-	stream.putXmlString(iVariant.string());
+	stream.putXmlString(vari.string());
 	stream << "\"";
     }
 }
@@ -322,8 +362,8 @@ bool Object::setAttribute(Property prop, Attribute value) {
 	}
 	break;
     case EPropVariant:
-	if (value != iVariant) {
-	    iVariant = value;
+	if (value != getObjectVariant(this)) {
+	    setObjectVariant(this, value);
 	    return true;
 	}
 	break;
@@ -339,7 +379,7 @@ Attribute Object::getAttribute(Property prop) const noexcept {
     switch (prop) {
     case EPropPinned: return Attribute(pinned());
     case EPropTransformations: return Attribute(iTransformations);
-    case EPropVariant: return iVariant;
+    case EPropVariant: return getObjectVariant(this);
     default: return Attribute::UNDEFINED();
     }
 }
@@ -356,15 +396,16 @@ Attribute Object::getCustom() const noexcept { return iCustom; }
 //! Set the 'animate' attribute (used in HTML/JS animations)
 void Object::setAnimate(Attribute value) {
     assert(value.isUndefined() || value.isString());
-    iAnimate = value;
+    setObjectAnimate(this, value);
 }
 
 //! Return value of the 'animate' attribute
-Attribute Object::getAnimate() const noexcept { return iAnimate; }
+Attribute Object::getAnimate() const noexcept { return getObjectAnimate(this); }
 
 //! Should this object be displayed when 'visibleVariant' is selected
 bool Object::displayInVariant(Attribute visibleVariant) const noexcept {
-    return iVariant.isUndefined() || iVariant == visibleVariant;
+    Attribute vari = getObjectVariant(this);
+    return vari.isUndefined() || vari == visibleVariant;
 }
 
 // --------------------------------------------------------------------
