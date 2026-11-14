@@ -1,3 +1,7 @@
+> **Note:** This branch (`personal`) is Sariel's personal playground for experimenting with and testing new features for [Ipe](https://github.com/otfried/ipe) before submitting changes upstream. For the official Ipe repository and releases, see [`otfried/ipe`](https://github.com/otfried/ipe).
+
+---
+
 ## Ipe extensible drawing editor
 
 ### Introduction
