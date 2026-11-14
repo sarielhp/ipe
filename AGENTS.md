@@ -88,3 +88,8 @@ For the `uitest` program (manual test of the dialog code), see `src/uitest`.
   ipelets sees only a restricted environment (see the manual), so use `_G.` for
   everything else.
 * Keep changes surgical: this code base is used on five platforms.
+* **Cross-platform preference (Qt-only changes discouraged)**: Upstream (`otfried/ipe`)
+  strongly prefers changes that work across all versions and editions of Ipe (Qt, GTK,
+  Windows, Cocoa, and Ipe Web/JS/Electron/VS Code). Changes that work only for Qt are
+  much less useful for upstream and should be done only if there is no other way
+  (otherwise keep them local to `personal` rather than submitting an upstream PR).
